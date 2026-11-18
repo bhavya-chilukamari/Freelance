@@ -1,0 +1,197 @@
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+
+async function testInvoicePrint() {
+  console.log('====================================================');
+  console.log('🧪 TESTING INVOICE PRINT STYLING & PDF EXPORT');
+  console.log('====================================================');
+
+  const distDir = path.resolve('client/dist');
+  const assetsDir = path.join(distDir, 'assets');
+  const files = fs.readdirSync(assetsDir);
+  const cssFile = files.find((f) => f.endsWith('.css'));
+  if (!cssFile) {
+    throw new Error('Could not find compiled CSS file in client/dist/assets');
+  }
+  const cssPath = path.join(assetsDir, cssFile);
+  console.log(`Using compiled CSS: ${cssFile}`);
+
+  // Create an HTML page mirroring DashboardLayout + Navbar + Sidebar + PaymentsPage + Invoice Modal
+  const testHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice Print Test</title>
+  <link rel="stylesheet" href="${cssPath.replace(/\\/g, '/')}">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+  <!-- Outer Dashboard Layout -->
+  <div class="flex h-screen overflow-hidden bg-slate-50 print:h-auto print:overflow-visible print:bg-white">
+    <!-- Sidebar Navigation (Should be hidden in print) -->
+    <aside class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 h-full bg-slate-900 border-r border-slate-800 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 print:hidden text-white p-6">
+      <h2>FreelanceOS Sidebar</h2>
+      <ul>
+        <li>Dashboard</li>
+        <li>Invoices</li>
+      </ul>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-col flex-1 min-w-0 overflow-hidden print:overflow-visible print:h-auto">
+      <!-- Navbar (Should be hidden in print) -->
+      <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between print:hidden">
+        <h1>Invoices & Financials</h1>
+        <div>User Profile</div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 print:p-0 print:overflow-visible print:h-auto">
+        <!-- PaymentsPage main content (Should be hidden in print) -->
+        <div class="space-y-6 print:hidden">
+          <div class="bg-white p-4 rounded-xl border border-slate-200">
+            <h3>KPI: Total Invoiced: $15,000</h3>
+            <p>Filter by Status</p>
+            <table>
+              <tr><td>Invoice INV-2026-001</td><td>$5,000</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Print-Ready Invoice Preview Modal -->
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible">
+          <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:m-0 print:p-0">
+            <!-- Modal Controls Header (Hidden during print) -->
+            <div class="flex items-center justify-between px-6 py-3.5 bg-slate-900 text-white print:hidden">
+              <span>Invoice Preview – INV-2026-001</span>
+              <button>Print / PDF</button>
+            </div>
+
+            <!-- Printable Invoice Document Body -->
+            <div id="printable-invoice" class="p-8 sm:p-12 space-y-8 bg-white print:p-0 print:m-0 print:space-y-6">
+              <!-- Invoice Top Header -->
+              <div class="flex justify-between items-start gap-4">
+                <div>
+                  <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tight">INVOICE</h2>
+                  <p class="text-sm font-mono font-bold text-indigo-600 mt-0.5">INV-2026-001</p>
+                </div>
+                <div class="text-right">
+                  <h3 class="text-base font-bold text-slate-900">Apex Software Studio</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">alex@apexstudio.com</p>
+                  <p class="text-xs text-slate-500">+1 (555) 019-2834</p>
+                  <p class="text-xs text-slate-500">Tax ID: US-987654321</p>
+                </div>
+              </div>
+
+              <!-- Billed To & Dates -->
+              <div class="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 text-xs">
+                <div>
+                  <p class="font-bold text-slate-400 uppercase tracking-wider">BILLED TO:</p>
+                  <p class="text-sm font-bold text-slate-900 mt-1">Acme Global Corporation</p>
+                  <p class="text-slate-600">Enterprise Cloud Division</p>
+                  <p class="text-slate-600">billing@acmeglobal.com</p>
+                  <p class="text-slate-600 mt-0.5">100 Tech Boulevard, Suite 400, San Francisco, CA</p>
+                </div>
+                <div class="text-right space-y-1.5">
+                  <div>
+                    <span class="text-slate-400">Issue Date: </span>
+                    <span class="font-semibold text-slate-800">11/10/2026</span>
+                  </div>
+                  <div>
+                    <span class="text-slate-400">Due Date: </span>
+                    <span class="font-bold text-rose-600">11/24/2026</span>
+                  </div>
+                  <div>
+                    <span class="text-slate-400">Status: </span>
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200">SENT</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Line Items Table -->
+              <div class="pt-4">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b-2 border-slate-800 text-[11px] font-bold text-slate-700 uppercase">
+                      <th class="py-2.5">Description</th>
+                      <th class="py-2.5 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 text-sm">
+                    <tr>
+                      <td class="py-4">
+                        <p class="font-semibold text-slate-900">E-Commerce Platform Redesign & Full-Stack Implementation</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Project: E-Commerce Storefront</p>
+                      </td>
+                      <td class="py-4 text-right font-bold text-slate-900">$4,500.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Total Calculation -->
+              <div class="flex justify-end pt-4 border-t border-slate-200">
+                <div class="w-64 space-y-2 text-xs">
+                  <div class="flex justify-between text-slate-600">
+                    <span>Subtotal:</span>
+                    <span>$4,500.00</span>
+                  </div>
+                  <div class="flex justify-between font-bold text-sm text-slate-900 pt-2 border-t border-slate-200">
+                    <span>Total Due:</span>
+                    <span class="text-base text-indigo-600">$4,500.00</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payment Instructions / Notes -->
+              <div class="pt-6 border-t border-slate-100 text-xs text-slate-500">
+                <p class="font-bold text-slate-700 uppercase tracking-wider mb-1">Notes & Terms:</p>
+                <p>Payment is due within 14 days of invoice date. Wire transfer details: Chase Bank, Routing #021000021, Account #8892144810.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const scratchDir = path.resolve('scratch');
+  if (!fs.existsSync(scratchDir)) {
+    fs.mkdirSync(scratchDir, { recursive: true });
+  }
+
+  const testHtmlPath = path.join(scratchDir, 'invoice_print_preview.html');
+  fs.writeFileSync(testHtmlPath, testHtml, 'utf8');
+  console.log(`Wrote test HTML: ${testHtmlPath}`);
+
+  const outputPdfPath = path.join(scratchDir, 'invoice_output.pdf');
+  if (fs.existsSync(outputPdfPath)) {
+    fs.unlinkSync(outputPdfPath);
+  }
+
+  const edgeExe = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+  if (!fs.existsSync(edgeExe)) {
+    console.warn('Microsoft Edge executable not found at standard path.');
+    return;
+  }
+
+  console.log('Running Microsoft Edge headless print-to-pdf...');
+  const cmd = `"${edgeExe}" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="${outputPdfPath}" "file:///${testHtmlPath.replace(/\\/g, '/')}"`;
+
+  try {
+    execSync(cmd, { stdio: 'pipe' });
+    if (fs.existsSync(outputPdfPath)) {
+      const stats = fs.statSync(outputPdfPath);
+      console.log(`✅ SUCCESS: PDF generated successfully!`);
+      console.log(`   Path: ${outputPdfPath}`);
+      console.log(`   Size: ${stats.size} bytes (${(stats.size / 1024).toFixed(1)} KB)`);
+    } else {
+      console.error('❌ FAIL: PDF file was not created.');
+    }
+  } catch (err) {
+    console.error('Error generating PDF with headless Edge:', err.message);
+  }
+}
+
+testInvoicePrint();
